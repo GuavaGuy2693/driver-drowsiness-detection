@@ -1,6 +1,6 @@
 from mods.container import get_feature
-from mods.process import process_frame, draw_frame
-from mods.evaluate import update
+from mods.process import process_frame, draw_frame, timeToFrame
+from mods.evaluate import blinkEval, basicEval
 from mods.features import find_features
 from mods.model import predict_mouth, predict_eye
 
@@ -11,9 +11,12 @@ from mods.config import model, basic
 import cv2
 
 ft = 1000/basic["fps"]
-reduceFrame = basic["reduceTime"]*1000//ft
-print(reduceFrame)
-track = 0
+reduceFrame = timeToFrame(basic["reduceTime"], ft)
+eyeWindow = timeToFrame(model['eye']['window'], ft)
+mouthWindow = timeToFrame(model['mouth']['time'], ft)
+
+rtrack = 0  # track reduction
+bTrack = 0  # track blink
 
 face_class = ["no_yawn", "yawn"]
 eye_class = ["open", "closed"]
@@ -33,9 +36,9 @@ with mp_face_detection.FaceDetection(
         if not ret:
             break
 
-        track += 1       
+        rtrack += 1       
 
-## Run inference
+        ## Run inference
         results = face_detection.process(frame)
         mouthbox, eyebox = find_features(frame, results)
 
@@ -49,22 +52,26 @@ with mp_face_detection.FaceDetection(
             draw_frame(frame, face_class[roi.mouth_state[-1]], mouthbox)
             draw_frame(frame, eye_class[roi.eye_state[-1]], eyebox)
 
-## Evaluate results
+        ## Evaluate results
         if not roi.warn:
-            update(roi.eye_state, model["eye"]["faultTimeRatio"], model["eye"]["warn"])
-            update(roi.mouth_state, model["mouth"]["faultTimeRatio"], model["mouth"]["warn"])
+            if (roi.score >= 100):
+                roi.warn = True
+            else:
+                # Blink
+                blinkEval(roi, model['eye']['blinkCount'], bTrack, ft)
 
-## Reduce warning level over time
-            if (track > reduceFrame):
-                if roi.eye_count:
-                    roi.eye_count -= 1
-                if roi.mouth_count:
-                    roi.mouth_count -= 1
+                # Eye shut
+                basicEval(roi.eye_state, model, 'eye', eyeWindow, roi.score)
 
-        if (roi.eye_count + roi.mouth_count > basic["maxWarn"]):
-            roi.warn = True
+                # Yawn
+                basicEval(roi.mouth_state, model, 'eye', mouthWindow, roi.score)
 
-## Warning alert
+            ## Reduce warning level over time
+            if (rtrack > reduceFrame) and (roi.score > 0):
+                roi.score -= 1
+                rtrack = 0
+
+        ## Warning alert
         if roi.warn:
             cv2.putText(
                 frame,
@@ -76,16 +83,16 @@ with mp_face_detection.FaceDetection(
                 2,
             )
 
-## Key Inputs
+        ## Key Inputs
         key = cv2.waitKey(1)
         if key & 0xFF == ord("q"):                  # Quit -> Q
             break
         if roi.warn and (key & 0xFF == ord(" ")):   # Reset warning state -> <Space>
             roi.reset()
 
-        print((roi.eye_count, roi.mouth_count), roi.warn)
+        print(roi.score, roi.warn)
 
-## Draw Frame
+        ## Draw Frame
         cv2.imshow("feed", frame)
 
 feed.release()

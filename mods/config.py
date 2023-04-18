@@ -7,16 +7,18 @@ model = {
     'eye': {
         'path': config.get('eyeModel', 'path'),
         "resolution": config.getint('eyeModel', 'resolution'),
-        "warn": config.getint('eyeModel', 'warn'),
+        "weight": config.getint('eyeModel', 'weight'),
         "time": config.getint('eyeModel', 'time'),
-        "faultTimeRatio": config.getfloat('eyeModel', 'faultTimeRatio')
+        "blinkCount": config.getint('eyeModel', 'blinkCount'),
+        "faultRatio": config.getfloat('eyeModel', 'faultRatio'),
+        "window": config.getint('eyeModel', 'window')
     },
     'mouth': {
         'path': config.get('mouthModel', 'path'),
         "resolution": config.getint('mouthModel', 'resolution'),
-        "warn": config.getint('mouthModel', 'warn'),
+        "weight": config.getint('mouthModel', 'weight'),
         "time": config.getint('mouthModel', 'time'),
-        "faultTimeRatio": config.getfloat('mouthModel', 'faultTimeRatio')
+        "faultRatio": config.getfloat('mouthModel', 'faultRatio')
     }
 }
 

@@ -47,3 +47,7 @@ def normalized_pixel(
     x_px = min(math.floor(normalized_x * image_width), image_width - 1)
     y_px = min(math.floor(normalized_y * image_height), image_height - 1)
     return x_px, y_px
+
+
+def timeToFrame(time, ft):
+    return int(time*1000*ft)
